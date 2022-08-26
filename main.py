@@ -1,5 +1,4 @@
 import random
-
 import requests
 import json
 import time
@@ -33,14 +32,28 @@ class BilibiliCommentSpider:
         print(f'爬取结束，用时{t2-t1:.2f}秒    {time.asctime()}')
         return self.allpagedict
 
-    def getpages(self, n):  # 从0开始
+    def getpages(self, n):  # 从0开始   # 一页20个主评论
         if n > self.pagenum:
             raise IndexError(f'第{n}页未抓取！')
         else:
             return self.allpagedict[n]
 
+    def getreply(self, n):   # 待定
+        pagereplies = []
+        for i in range(self.pagenum):
+            page: dict = self.getpages(i)
+            pagereplies.append(page['data'])
+
     def users_level_ratio(self):
-        pass
+        levellist = [0]*8   # 对应0-6闪电 八个等级
+        for i in range(self.pagenum):
+            page: dict = self.getpages(i)  # 不加dict类型注解时，下一行编译器会有索引类型警告
+            replynums = len(page['data']['replies'])  # 每页多少条主回复
+            for x in range(replynums):
+                if page['data']['replies'][x]['member']['is_senior_member'] == 1:
+                    pass    # 如何简化判断逻辑
+
+
 
     def run(self):
         allpagedict = self.request_json_dict()
