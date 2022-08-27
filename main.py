@@ -5,13 +5,13 @@ import time
 
 
 class BilibiliCommentSpider:
-    def __init__(self):
+    def __init__(self, oid=32036576, pagenum=1):
+        self.oid = oid  # 视频av号
+        self.pagenum = pagenum  # 爬取总页数
         self.url = 'https://api.bilibili.com/x/v2/reply/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                      'Chrome/104.0.5112.102 Safari/537.36 Edg/104.0.1293.63'}
-        self.oid = 32036576  # 视频av号
         self.next = 0  # 评论页数第一页是0，第二页是2，随后顺延
-        self.pagenum = 1  # 爬取总页数
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode=3&plat=1'
         self.allpagedict = []
 
