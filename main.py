@@ -38,12 +38,6 @@ class BilibiliCommentSpider:
         else:
             return self.allpagedict[n]
 
-    def getpageallreply(self, n):   # 返回该页
-        pagereplies = []
-        for i in range(self.pagenum):
-            page: dict = self.getpages(i)
-            pagereplies.append(page['data'])
-
     def users_level_ratio(self):
         levellist = [0]*8   # 对应0-6闪电 八个等级
         for i in range(self.pagenum):
