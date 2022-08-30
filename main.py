@@ -38,7 +38,7 @@ class BilibiliCommentSpider:
         else:
             return self.allpagedict[n]
 
-    def getreply(self, n):   # 待定
+    def getpageallreply(self, n):   # 返回该页
         pagereplies = []
         for i in range(self.pagenum):
             page: dict = self.getpages(i)
@@ -48,12 +48,20 @@ class BilibiliCommentSpider:
         levellist = [0]*8   # 对应0-6闪电 八个等级
         for i in range(self.pagenum):
             page: dict = self.getpages(i)  # 不加dict类型注解时，下一行编译器会有索引类型警告
-            replynums = len(page['data']['replies'])  # 每页多少条主回复
-            for x in range(replynums):
+            mainreplynums = len(page['data']['replies'])  # 每页多少条主回复
+            # 统计主回复
+            for x in range(mainreplynums):
                 if page['data']['replies'][x]['member']['is_senior_member'] == 1:
-                    pass    # 如何简化判断逻辑
-
-
+                    levellist[7] += 1
+                else:
+                    levellist[page['data']['replies'][x]['member']['level_info']['current_level']] += 1
+                # 统计子回复
+                subreplynums = len(page['data']['replies']['replies'])  # 每条主回复多少条子回复
+                for y in range(subreplynums):
+                    if page['data']['replies']['replies'][y]['member']['is_senior_member'] == 1:
+                        levellist[7] += 1
+                    else:
+                        levellist[page['data']['replies']['replies'][y]['member']['level_info']['current_level']] += 1
 
     def run(self):
         allpagedict = self.request_json_dict()
