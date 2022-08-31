@@ -3,16 +3,17 @@ import requests
 import json
 import time
 import jieba
+import re
 
 import bv_av
 
 
 class BilibiliCommentSpider:
-    def __init__(self, vid: str | int, pagenum=1):
-        if isinstance(vid, str):  # BV开头的bv号
-            self.oid = bv_av.dec(vid)
-        else:                    # 纯数字av号
+    def __init__(self, vid: str, pagenum=1):
+        if vid.isnumeric():       # 纯数字av号
             self.oid = int(vid)
+        else:                    # BV开头的bv号
+            self.oid = bv_av.dec(vid)
         self.pagenum = pagenum  # 爬取总页数
         self.url = 'https://api.bilibili.com/x/v2/reply/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -20,6 +21,17 @@ class BilibiliCommentSpider:
         self.next = 0  # 评论页数第一页是0，第二页是2，随后顺延
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode=3&plat=1'
         self.allpagedict = []
+
+    def get_basic_info(self):  # 获取标题等
+        url = f'https://www.bilibili.com/video/av{self.oid}'
+        res = requests.get(url, headers=self.headers)
+        title = re.findall('<title data-vue-meta="true">(.*?)</title>', res.text)
+        if len(title) == 0:
+            title = re.findall('<html>.*?<title>(.*?)</title>', res.text)
+        try:
+            return title[0]
+        except IndexError:
+            return '[ERROR]未解析到视频名称'
 
     def request_json_dict(self):
         t1 = time.time()
@@ -73,9 +85,9 @@ class BilibiliCommentSpider:
         print(
             f'level 0: {levellist[0]}\nlevel 1: {levellist[1]}\nlevel 2: {levellist[2]}\nlevel 3: {levellist[3]}\nlevel 4: '
             f' {levellist[4]}\nlevel 5: {levellist[5]}\nlevel 6: {levellist[6]}\nlevel 6+: {levellist[7]}\n'
-            f'共计{sum(levellist)}条评论')
+            f'视频名称: {self.get_basic_info()}   AV{self.oid}\n  共计{sum(levellist)}条评论')
         print(
-            f'0-4级占比{(sum(levellist[0:5]) / sum(levellist)) * 100:.2f}%   '
+            f'  0-4级占比{(sum(levellist[0:5]) / sum(levellist)) * 100:.2f}%   '
             f'5级及以上占比{(sum(levellist[5:]) / sum(levellist)) * 100:.2f}%   6级及以上占比{(sum(levellist[6:]) / sum(levellist)) * 100:.2f}%'
             f'   6+级占比{(levellist[7] / sum(levellist)) * 100:.2f}%')
 
@@ -85,5 +97,8 @@ class BilibiliCommentSpider:
 
 
 if __name__ == '__main__':
-    spider = BilibiliCommentSpider(vid='BV1MX4y1N75X', pagenum=10)   # vid为纯数字av号(int)或以BV开头的bv号(str)
+    print('b站视频评论区查询姬')
+    vid = input('输入视频AV号（不带前缀的纯数字）或BV号(带前缀): ')  # 判断流程在构造函数
+    pagenum = int(input('输入需要抓取的页数: '))
+    spider = BilibiliCommentSpider(vid=vid, pagenum=pagenum)   # vid为纯数字av号(int)或以BV开头的bv号(str)
     spider.run()
