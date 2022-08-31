@@ -2,11 +2,17 @@ import random
 import requests
 import json
 import time
+import jieba
+
+import bv_av
 
 
 class BilibiliCommentSpider:
-    def __init__(self, oid=32036576, pagenum=1):
-        self.oid = oid  # 视频av号
+    def __init__(self, vid: str | int, pagenum=1):
+        if isinstance(vid, str):  # BV开头的bv号
+            self.oid = bv_av.dec(vid)
+        else:                    # 纯数字av号
+            self.oid = int(vid)
         self.pagenum = pagenum  # 爬取总页数
         self.url = 'https://api.bilibili.com/x/v2/reply/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -70,7 +76,8 @@ class BilibiliCommentSpider:
             f'共计{sum(levellist)}条评论')
         print(
             f'0-4级占比{(sum(levellist[0:5]) / sum(levellist)) * 100:.2f}%   '
-            f'5级及以上占比{(sum(levellist[5:]) / sum(levellist)) * 100:.2f}%   6级及以上占比{(sum(levellist[6:]) / sum(levellist)) * 100:.2f}%')
+            f'5级及以上占比{(sum(levellist[5:]) / sum(levellist)) * 100:.2f}%   6级及以上占比{(sum(levellist[6:]) / sum(levellist)) * 100:.2f}%'
+            f'   6+级占比{(levellist[7] / sum(levellist)) * 100:.2f}%')
 
     def run(self):
         allpagedict = self.request_json_dict()
@@ -78,5 +85,5 @@ class BilibiliCommentSpider:
 
 
 if __name__ == '__main__':
-    spider = BilibiliCommentSpider(oid=771908203, pagenum=1)
+    spider = BilibiliCommentSpider(vid='BV1MX4y1N75X', pagenum=10)   # vid为纯数字av号(int)或以BV开头的bv号(str)
     spider.run()
