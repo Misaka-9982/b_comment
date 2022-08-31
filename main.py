@@ -15,23 +15,21 @@ class BilibiliCommentSpider:
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode=3&plat=1'
         self.allpagedict = []
 
-
-
     def request_json_dict(self):
         t1 = time.time()
         print(f'开始爬取评论   {time.asctime()}')
         for i in range(self.pagenum):
             t2 = time.time()
-            print(f'正在爬取{i+1}/{self.pagenum}页，已用时{t2-t1:.2f}秒')
+            print(f'正在爬取{i + 1}/{self.pagenum}页，已用时{t2 - t1:.2f}秒')
             res = requests.get(self.url, params=self.querystrparams, headers=self.headers)
             commentdict = json.loads(res.text)
             self.allpagedict.append(commentdict)
             # b站api规则，第一页从0开始，第二页next=2，跳过1
             self.next += 1 if self.next != 0 else 2  # 该语法else后针对if前的值，不是整个表达式
             self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode=3&plat=1'
-            time.sleep(random.uniform(1, 3))         # 随机间隔时间范围
+            time.sleep(random.uniform(1, 3))  # 随机间隔时间范围
         t2 = time.time()
-        print(f'爬取结束，用时{t2-t1:.2f}秒    {time.asctime()}')
+        print(f'爬取结束，用时{t2 - t1:.2f}秒    {time.asctime()}')
         return self.allpagedict
 
     def getpages(self, n):  # 从0开始   # 一页20个主评论
@@ -41,7 +39,7 @@ class BilibiliCommentSpider:
             return self.allpagedict[n]
 
     def users_level_ratio(self):
-        levellist = [0]*8   # 对应0-6闪电 八个等级
+        levellist = [0] * 8  # 对应0-6闪电 八个等级
         for i in range(self.pagenum):
             page: dict = self.getpages(i)  # 不加dict类型注解时，下一行编译器会有索引类型警告
             # 统计主回复
@@ -64,10 +62,15 @@ class BilibiliCommentSpider:
                     if page['data']['replies'][x]['replies'][y]['member']['is_senior_member'] == 1:
                         levellist[7] += 1
                     else:
-                        levellist[page['data']['replies'][x]['replies'][y]['member']['level_info']['current_level']] += 1
-        print(f'level0: {levellist[0]}\nlevel1: {levellist[1]}\nlevel2: {levellist[2]}\nlevel3: {levellist[3]}\nlevel4:'
-              f' {levellist[4]}\nlevel5: {levellist[5]}\nlevel6: {levellist[6]}\nlevel6+: {levellist[7]}\n'
-              f'共计{sum(levellist)}条评论')
+                        levellist[
+                            page['data']['replies'][x]['replies'][y]['member']['level_info']['current_level']] += 1
+        print(
+            f'level 0: {levellist[0]}\nlevel 1: {levellist[1]}\nlevel 2: {levellist[2]}\nlevel 3: {levellist[3]}\nlevel 4: '
+            f' {levellist[4]}\nlevel 5: {levellist[5]}\nlevel 6: {levellist[6]}\nlevel 6+: {levellist[7]}\n'
+            f'共计{sum(levellist)}条评论')
+        print(
+            f'0-4级占比{(sum(levellist[0:5]) / sum(levellist)) * 100:.2f}%   '
+            f'5级及以上占比{(sum(levellist[5:]) / sum(levellist)) * 100:.2f}%   6级及以上占比{(sum(levellist[6:]) / sum(levellist)) * 100:.2f}%')
 
     def run(self):
         allpagedict = self.request_json_dict()
@@ -75,5 +78,5 @@ class BilibiliCommentSpider:
 
 
 if __name__ == '__main__':
-    spider = BilibiliCommentSpider(oid=771908203, pagenum=2)
+    spider = BilibiliCommentSpider(oid=771908203, pagenum=1)
     spider.run()
