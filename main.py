@@ -15,6 +15,8 @@ class BilibiliCommentSpider:
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode=3&plat=1'
         self.allpagedict = []
 
+
+
     def request_json_dict(self):
         t1 = time.time()
         print(f'开始爬取评论   {time.asctime()}')
@@ -73,5 +75,5 @@ class BilibiliCommentSpider:
 
 
 if __name__ == '__main__':
-    spider = BilibiliCommentSpider(oid=216800509, pagenum=2)
+    spider = BilibiliCommentSpider(oid=771908203, pagenum=2)
     spider.run()
