@@ -101,4 +101,4 @@ if __name__ == '__main__':
     vid = input('输入视频AV号（不带前缀的纯数字）或BV号(带前缀): ')  # 判断流程在构造函数
     pagenum = int(input('输入需要抓取的页数: '))
     spider = BilibiliCommentSpider(vid=vid, pagenum=pagenum)   # vid为纯数字av号(int)或以BV开头的bv号(str)
-    spider.run()
+    spider.run()  #
