@@ -1,27 +1,32 @@
+import os.path
 import random
 import requests
 import json
 import time
 import jieba
 import re
+import csv
 
 import bv_av
 
 
 class BilibiliCommentSpider:
-    def __init__(self, vid: str, pagenum=1):
+    def __init__(self, vid: str, pagenum=1, delay=3, mode=2):
         if vid.isnumeric():       # 纯数字av号
             self.oid = int(vid)
         else:                    # BV开头的bv号
             self.oid = bv_av.dec(vid)
-        self.mode = 2     # mode=3按热门，mode=2按时间
+        # self.delay = delay   # 爬取延迟随机范围
+        self.mode = mode     # mode=3按热门，mode=2按时间
         self.pagenum = pagenum  # 爬取总页数
         self.url = 'https://api.bilibili.com/x/v2/reply/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                      'Chrome/104.0.5112.102 Safari/537.36 Edg/104.0.1293.63'}
         self.next = 0  # 评论页数第一页是0，第二页是2，随后顺延
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode={self.mode}&plat=1'
-        self.allpagedict = []
+        self.allpagedict = []   # 所有页的集合
+        self.sortedcomment = []   # 主回复和子回复整理后分开存储
+        self.vidname = None
 
     def get_basic_info(self):  # 获取标题等
         url = f'https://www.bilibili.com/video/av{self.oid}'
@@ -40,7 +45,12 @@ class BilibiliCommentSpider:
         for i in range(self.pagenum):
             t2 = time.time()
             print(f'正在爬取{i + 1}/{self.pagenum}页，已用时{t2 - t1:.2f}秒')
-            res = requests.get(self.url, params=self.querystrparams, headers=self.headers)
+            try:
+                res = requests.get(self.url, params=self.querystrparams, headers=self.headers)
+            except (requests.exceptions.SSLError, requests.exceptions.ProxyError):
+                exit('SSL/代理错误，请关闭代理或检查网络设置')
+            except Exception as e:
+                exit(f'未知错误！\n{repr(e)}')
             commentdict = json.loads(res.text)
             self.allpagedict.append(commentdict)
             # b站api规则，第一页从0开始，第二页next=2，跳过1
@@ -49,9 +59,11 @@ class BilibiliCommentSpider:
             time.sleep(random.uniform(1, 3))  # 随机间隔时间范围
         t2 = time.time()
         print(f'爬取结束，用时{t2 - t1:.2f}秒    {time.asctime()}')
+        print('开始整合评论')
+        self.sortcomment()
         return self.allpagedict
 
-    def getpages(self, n):  # 从0开始   # 一页20个主评论
+    def getpages(self, n) -> dict:  # 从0开始   # 一页20个主评论
         if n > self.pagenum:
             raise IndexError(f'第{n}页未抓取！')
         else:
@@ -61,34 +73,16 @@ class BilibiliCommentSpider:
 
     def users_level_ratio(self):
         levellist = [0] * 8  # 对应0-6闪电 八个等级
-        for i in range(self.pagenum):
-            page: dict = self.getpages(i)  # 不加dict类型注解时，下一行编译器会有索引类型警告
-            # 统计主回复
-            if page['data']['replies'] is not None:
-                mainreplynums = len(page['data']['replies'])  # 每页多少条主回复
+        for comment in self.sortedcomment:
+            if comment['member']['is_senior_member'] == 1:
+                levellist[7] += 1
             else:
-                mainreplynums = 0
-            for x in range(mainreplynums):
-                if page['data']['replies'][x]['member']['is_senior_member'] == 1:
-                    levellist[7] += 1
-                else:
-                    levellist[page['data']['replies'][x]['member']['level_info']['current_level']] += 1
+                levellist[comment['member']['level_info']['current_level']] += 1
 
-                # 统计每条主回复下的子回复
-                if page['data']['replies'][x]['replies'] is not None:
-                    subreplynums = len(page['data']['replies'][x]['replies'])  # 每条主回复多少条子回复
-                else:
-                    subreplynums = 0
-                for y in range(subreplynums):
-                    if page['data']['replies'][x]['replies'][y]['member']['is_senior_member'] == 1:
-                        levellist[7] += 1
-                    else:
-                        levellist[
-                            page['data']['replies'][x]['replies'][y]['member']['level_info']['current_level']] += 1
         print(
             f'level 0: {levellist[0]}\nlevel 1: {levellist[1]}\nlevel 2: {levellist[2]}\nlevel 3: {levellist[3]}\nlevel 4: '
-            f' {levellist[4]}\nlevel 5: {levellist[5]}\nlevel 6: {levellist[6]}\nlevel 6+: {levellist[7]}\n'
-            f'视频名称: {self.get_basic_info()}   AV{self.oid}\n  共计{sum(levellist)}条评论')
+            f'{levellist[4]}\nlevel 5: {levellist[5]}\nlevel 6: {levellist[6]}\nlevel 6+: {levellist[7]}\n'
+            f'视频名称: {self.vidname}   AV{self.oid}\n  共计{sum(levellist)}条评论')
         print('爬取逻辑按热度排序') if self.mode == 3 else print('爬取逻辑按时间倒序')
         print(
             f'  0-4级占比{(sum(levellist[0:5]) / sum(levellist)) * 100:.2f}%   '
@@ -100,10 +94,41 @@ class BilibiliCommentSpider:
         for i in range(self.pagenum):
             page: dict = self.getpages(i)  # 不加dict类型注解时，下一行编译器会有索引类型警告
 
+    def sortcomment(self):   # 将主次回复同等级整合
+        for num in range(pagenum):
+            page = self.getpages(num)
+            if page.get('data').get('replies') is not None:   # 防止无回复时产生keyerror
+                for mainreply in page['data']['replies']:  # 主回复
+                    if mainreply.get('replies') is not None:
+                        for subreply in mainreply['replies']:  # 子回复
+                            self.sortedcomment.append(subreply)
+
+                        del mainreply['replies']
+                        self.sortedcomment.append(mainreply)
+
+            else:
+                print(f'第{num}页无评论！')
+
+    def save_as_csv(self):
+        save = input('保存所有评论为csv格式输入y，否则n')
+        if save == 'y':
+            n = 1  # 同名文件编号
+            while os.path.isfile(f'{self.vidname}-{n}'):
+                n += 1
+            # newline=''防止换行符转换错误
+            with open(f'{self.vidname}-{n}', 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([''])  # 表头
+
+
+
+        else:
+            print('爬取完成，未保存')
 
 
     def run(self):
         allpagedict = self.request_json_dict()
+        self.vidname = self.get_basic_info()
         self.users_level_ratio()
 
 
@@ -113,3 +138,4 @@ if __name__ == '__main__':
     pagenum = int(input('输入需要抓取的页数: '))
     spider = BilibiliCommentSpider(vid=vid, pagenum=pagenum)   # vid为纯数字av号(int)或以BV开头的bv号(str)
     spider.run()
+
