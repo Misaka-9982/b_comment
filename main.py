@@ -112,16 +112,42 @@ class BilibiliCommentSpider:
     def save_as_csv(self):
         save = input('保存所有评论为csv格式输入y，否则n')
         if save == 'y':
+            verbose = input('选择内容详细程度（默认2，回车默认）:\n1、用户名+内容\n2、uid+用户名+性别+等级+时间+内容\n3、（暂未开发）')
+            if verbose == '':
+                verbose = 2
+            elif verbose.isnumeric():
+                verbose = int(verbose)
+
             n = 1  # 同名文件编号
             while os.path.isfile(f'{self.vidname}-{n}'):
                 n += 1
             # newline=''防止换行符转换错误
-            with open(f'{self.vidname}-{n}', 'w', newline='') as f:
+            with open(f'{self.vidname}-{n}.csv', 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
-                writer.writerow([''])  # 表头
+                if verbose == 1:
+                    writer.writerow(['用户名', '内容'])  # 表头
+                    for comment in self.sortedcomment:
+                        writer.writerow([comment['member']['uname'], comment['content']['message']])
+                    print(f'已保存到{self.vidname}-{n}.csv')
+                elif verbose == 2:
+                    writer.writerow(['uid，用户名，性别，等级，发布时间，内容'])
+                    for comment in self.sortedcomment:
+                        writer.writerow([comment['member']['mid'], comment['member']['uname'], comment['member']['sex'],
+                                         comment['member']['level_info']['current_level'],
+                                         time.asctime(time.localtime(comment['ctime'])),
+                                         comment['content']['message']])
+                    print(f'已保存到{self.vidname}-{n}.csv')
+                elif verbose == 3:
+                    print('暂未开发')
 
-
-
+                else:
+                    print('参数错误，默认无格式保存全部内容，可能保存失败')
+                    for comment in self.sortedcomment:
+                        try:
+                            writer.writerow(comment.items)
+                        except Exception as e:
+                            print('未知错误！')
+                            print(repr(e))
         else:
             print('爬取完成，未保存')
 
@@ -130,7 +156,7 @@ class BilibiliCommentSpider:
         allpagedict = self.request_json_dict()
         self.vidname = self.get_basic_info()
         self.users_level_ratio()
-
+        self.save_as_csv()
 
 if __name__ == '__main__':
     print('b站视频评论区查询姬')
