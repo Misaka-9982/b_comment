@@ -14,12 +14,13 @@ class BilibiliCommentSpider:
             self.oid = int(vid)
         else:                    # BV开头的bv号
             self.oid = bv_av.dec(vid)
+        self.mode = 2     # mode=3按热门，mode=2按时间
         self.pagenum = pagenum  # 爬取总页数
         self.url = 'https://api.bilibili.com/x/v2/reply/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                      'Chrome/104.0.5112.102 Safari/537.36 Edg/104.0.1293.63'}
         self.next = 0  # 评论页数第一页是0，第二页是2，随后顺延
-        self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode=3&plat=1'
+        self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode={self.mode}&plat=1'
         self.allpagedict = []
 
     def get_basic_info(self):  # 获取标题等
@@ -56,6 +57,8 @@ class BilibiliCommentSpider:
         else:
             return self.allpagedict[n]
 
+    # def getpagereplynums(self, page: dict):   # 统计传入页内容字典中，所有
+
     def users_level_ratio(self):
         levellist = [0] * 8  # 对应0-6闪电 八个等级
         for i in range(self.pagenum):
@@ -86,10 +89,18 @@ class BilibiliCommentSpider:
             f'level 0: {levellist[0]}\nlevel 1: {levellist[1]}\nlevel 2: {levellist[2]}\nlevel 3: {levellist[3]}\nlevel 4: '
             f' {levellist[4]}\nlevel 5: {levellist[5]}\nlevel 6: {levellist[6]}\nlevel 6+: {levellist[7]}\n'
             f'视频名称: {self.get_basic_info()}   AV{self.oid}\n  共计{sum(levellist)}条评论')
+        print('爬取逻辑按热度排序') if self.mode == 3 else print('爬取逻辑按时间倒序')
         print(
             f'  0-4级占比{(sum(levellist[0:5]) / sum(levellist)) * 100:.2f}%   '
             f'5级及以上占比{(sum(levellist[5:]) / sum(levellist)) * 100:.2f}%   6级及以上占比{(sum(levellist[6:]) / sum(levellist)) * 100:.2f}%'
             f'   6+级占比{(levellist[7] / sum(levellist)) * 100:.2f}%')
+
+    def words_frequency(self):
+        commentlist = []
+        for i in range(self.pagenum):
+            page: dict = self.getpages(i)  # 不加dict类型注解时，下一行编译器会有索引类型警告
+
+
 
     def run(self):
         allpagedict = self.request_json_dict()
@@ -101,4 +112,4 @@ if __name__ == '__main__':
     vid = input('输入视频AV号（不带前缀的纯数字）或BV号(带前缀): ')  # 判断流程在构造函数
     pagenum = int(input('输入需要抓取的页数: '))
     spider = BilibiliCommentSpider(vid=vid, pagenum=pagenum)   # vid为纯数字av号(int)或以BV开头的bv号(str)
-    spider.run()  #
+    spider.run()
