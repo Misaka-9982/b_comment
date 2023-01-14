@@ -102,7 +102,7 @@ class BilibiliCommentSpider:
                         jump_flag = False
                     continue
 
-                if len(re.findall('[\u4e00-\u9fa5]{2,}', word)):  # 仅匹配中文且长度大于1
+                if len(re.findall('.*[\u4e00-\u9fa5]{2,}.*', word)):  # 仅匹配中文且长度大于1
                     stop_flag = False
                     for stop_word in stop_list:   # 黑名单过滤
                         if stop_word in word:
@@ -128,8 +128,8 @@ class BilibiliCommentSpider:
                         for subreply in mainreply['replies']:  # 子回复
                             self.sortedcomment.append(subreply)
 
-                        del mainreply['replies']
-                        self.sortedcomment.append(mainreply)
+                    del mainreply['replies']
+                    self.sortedcomment.append(mainreply)
 
             else:
                 print(f'第{num}页无评论！')
