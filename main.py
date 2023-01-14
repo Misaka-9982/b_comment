@@ -11,7 +11,7 @@ import bv_av
 
 
 class BilibiliCommentSpider:
-    def __init__(self, vid: str, pagenum=1, delay=3, mode=2):
+    def __init__(self, vid: str, pagenum=1, delay=3, mode=3):
         if vid.isnumeric():       # 纯数字av号
             self.oid = int(vid)
         else:                    # BV开头的bv号
@@ -151,17 +151,19 @@ class BilibiliCommentSpider:
         else:
             print('爬取完成，未保存')
 
-
     def run(self):
         allpagedict = self.request_json_dict()
         self.vidname = self.get_basic_info()
         self.users_level_ratio()
         self.save_as_csv()
 
+
 if __name__ == '__main__':
     print('b站视频评论区查询姬')
-    vid = input('输入视频AV号（不带前缀的纯数字）或BV号(带前缀): ')  # 判断流程在构造函数
+    vid = input('输入视频AV号（不带av前缀的纯数字）或BV号(带BV前缀): ')  # 判断流程在构造函数
     pagenum = int(input('输入需要抓取的页数: '))
-    spider = BilibiliCommentSpider(vid=vid, pagenum=pagenum)   # vid为纯数字av号(int)或以BV开头的bv号(str)
+    mode = int(input('输入数字选择评论排序模式：\n1、按热度排序(默认)\n2、按时间排序'))
+    spider = BilibiliCommentSpider(vid=vid, pagenum=pagenum,
+                                   mode=mode if mode == 2 else 3)   # vid为纯数字av号(int)或以BV开头的bv号(str)
     spider.run()
 
