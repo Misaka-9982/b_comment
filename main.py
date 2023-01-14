@@ -22,7 +22,7 @@ class BilibiliCommentSpider:
         self.url = 'https://api.bilibili.com/x/v2/reply/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                      'Chrome/104.0.5112.102 Safari/537.36 Edg/104.0.1293.63'}
-        self.next = 0  # 评论页数第一页是0，第二页是2，随后顺延
+        self.next = 0  # 评论页数第一页是0，后续在data: cursor: next中
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode={self.mode}&plat=1'
         self.allpagedict = []  # 所有页的集合
         self.sortedcomment = []  # 主回复和子回复整理后分开存储
@@ -51,11 +51,10 @@ class BilibiliCommentSpider:
                 exit('SSL/代理错误，请关闭代理或检查网络设置')
             except Exception as e:
                 exit(f'未知错误！\n{repr(e)}')
-            commentdict = json.loads(res.text)
-            self.allpagedict.append(commentdict)
-            # b站api规则，第一页从0开始，第二页next=2，跳过1
-            self.next += 1 if self.next != 0 else 2  # 该语法else后针对if前的值，不是整个表达式
-            self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode=3&plat=1'
+            page_dict = json.loads(res.text)
+            self.allpagedict.append(page_dict)
+            self.next = page_dict['data']['cursor']['next']
+            self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode={self.mode}&plat=1'
             time.sleep(random.uniform(1, 3))  # 随机间隔时间范围
         t2 = time.time()
         print(f'爬取结束，用时{t2 - t1:.2f}秒    {time.asctime()}')
