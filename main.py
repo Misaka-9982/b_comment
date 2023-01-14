@@ -82,7 +82,7 @@ class BilibiliCommentSpider:
         print(
             f'level 0: {levellist[0]}\nlevel 1: {levellist[1]}\nlevel 2: {levellist[2]}\nlevel 3: {levellist[3]}\nlevel 4: '
             f'{levellist[4]}\nlevel 5: {levellist[5]}\nlevel 6: {levellist[6]}\nlevel 6+: {levellist[7]}\n'
-            f'视频名称: {self.vidname}   AV{self.oid}\n  共计{sum(levellist)}条评论')
+            f'视频名称: {self.vidname}   AV{self.oid}\n  共计{sum(levellist)}位用户')
         print('爬取逻辑按热度排序') if self.mode == 3 else print('爬取逻辑按时间倒序')
         print(
             f'  0-4级占比{(sum(levellist[0:5]) / sum(levellist)) * 100:.2f}%   '
@@ -91,7 +91,7 @@ class BilibiliCommentSpider:
 
     def words_frequency(self):
         words_dict = {}
-        stop_list = ['回复', '没有', '还是', '就是', '不是']
+        stop_list = ['回复', '是', '个', '们', '怎么', '没有', '什么', '这']
         jump_flag = False  # 跳过b站表情标签
         print('正在计算高频词')
         for comment in self.sortedcomment:
@@ -102,14 +102,20 @@ class BilibiliCommentSpider:
                         jump_flag = False
                     continue
 
-                if len(re.findall('[\u4e00-\u9fa5]{2,}', word)) and word not in stop_list:  # 仅匹配中文且长度大于1
-                    if word in words_dict:
-                        words_dict[word] += 1
-                    else:
-                        words_dict[word] = 1
+                if len(re.findall('[\u4e00-\u9fa5]{2,}', word)):  # 仅匹配中文且长度大于1
+                    stop_flag = False
+                    for stop_word in stop_list:   # 黑名单过滤
+                        if stop_word in word:
+                            stop_flag = True
+                            break
+                    if not stop_flag:
+                        if word in words_dict:
+                            words_dict[word] += 1
+                        else:
+                            words_dict[word] = 1
 
         words_freq_list = sorted(words_dict.items(), key=lambda x: x[1], reverse=True)[:11]  # 只取前10个
-        print('前十高频词：\n')
+        print('前十高频词: ')
         for word in words_freq_list:
             print(f'{word[0]} - {word[1]}次')
 
@@ -127,6 +133,7 @@ class BilibiliCommentSpider:
 
             else:
                 print(f'第{num}页无评论！')
+        print(f'共计{len(self.sortedcomment)}条评论')
 
     def save_as_csv(self):
         save = input('保存所有评论为csv格式输入y，否则n')
@@ -169,7 +176,7 @@ class BilibiliCommentSpider:
                             print('未知错误！')
                             print(repr(e))
         else:
-            print('爬取完成，未保存')
+            print('\n爬取完成，未保存')
 
     def run(self):
         allpagedict = self.request_json_dict()
