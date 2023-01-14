@@ -12,20 +12,20 @@ import bv_av
 
 class BilibiliCommentSpider:
     def __init__(self, vid: str, pagenum=1, delay=3, mode=3):
-        if vid.isnumeric():       # 纯数字av号
+        if vid.isnumeric():  # 纯数字av号
             self.oid = int(vid)
-        else:                    # BV开头的bv号
+        else:  # BV开头的bv号
             self.oid = bv_av.dec(vid)
         # self.delay = delay   # 爬取延迟随机范围
-        self.mode = mode     # mode=3按热门，mode=2按时间
+        self.mode = mode  # mode=3按热门，mode=2按时间
         self.pagenum = pagenum  # 爬取总页数
         self.url = 'https://api.bilibili.com/x/v2/reply/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                      'Chrome/104.0.5112.102 Safari/537.36 Edg/104.0.1293.63'}
         self.next = 0  # 评论页数第一页是0，第二页是2，随后顺延
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode={self.mode}&plat=1'
-        self.allpagedict = []   # 所有页的集合
-        self.sortedcomment = []   # 主回复和子回复整理后分开存储
+        self.allpagedict = []  # 所有页的集合
+        self.sortedcomment = []  # 主回复和子回复整理后分开存储
         self.vidname = None
 
     def get_basic_info(self):  # 获取标题等
@@ -90,14 +90,33 @@ class BilibiliCommentSpider:
             f'   6+级占比{(levellist[7] / sum(levellist)) * 100:.2f}%')
 
     def words_frequency(self):
-        commentlist = []
-        for i in range(self.pagenum):
-            page: dict = self.getpages(i)  # 不加dict类型注解时，下一行编译器会有索引类型警告
+        words_dict = {}
+        stop_list = ['回复', '没有', '还是', '就是', '不是']
+        jump_flag = False  # 跳过b站表情标签
+        print('正在计算高频词')
+        for comment in self.sortedcomment:
+            for word in jieba.cut(comment['content']['message'], HMM=True):  # cut返回迭代器  HMM-词库外的新词分割
+                if word == '[' or jump_flag:  # 过滤b站表情
+                    jump_flag = True
+                    if word == ']':
+                        jump_flag = False
+                    continue
 
-    def sortcomment(self):   # 将主次回复同等级整合
+                if len(re.findall('[\u4e00-\u9fa5]{2,}', word)) and word not in stop_list:  # 仅匹配中文且长度大于1
+                    if word in words_dict:
+                        words_dict[word] += 1
+                    else:
+                        words_dict[word] = 1
+
+        words_freq_list = sorted(words_dict.items(), key=lambda x: x[1], reverse=True)[:11]  # 只取前10个
+        print('前十高频词：\n')
+        for word in words_freq_list:
+            print(f'{word[0]} - {word[1]}次')
+
+    def sortcomment(self):  # 将主次回复同等级整合
         for num in range(pagenum):
             page = self.getpages(num)
-            if page.get('data').get('replies') is not None:   # 防止无回复时产生keyerror
+            if page.get('data').get('replies') is not None:  # 防止无回复时产生keyerror
                 for mainreply in page['data']['replies']:  # 主回复
                     if mainreply.get('replies') is not None:
                         for subreply in mainreply['replies']:  # 子回复
@@ -112,14 +131,15 @@ class BilibiliCommentSpider:
     def save_as_csv(self):
         save = input('保存所有评论为csv格式输入y，否则n')
         if save == 'y':
-            verbose = input('选择内容详细程度（默认2，回车默认）:\n1、用户名+内容\n2、uid+用户名+性别+等级+时间+内容\n3、（暂未开发）\n')
+            verbose = input(
+                '\n选择内容详细程度（默认2，回车默认）:\n1、用户名+内容\n2、uid+用户名+性别+等级+时间+内容\n3、（暂未开发）\n')
             if verbose == '':
                 verbose = 2
             elif verbose.isnumeric():
                 verbose = int(verbose)
 
             n = 1  # 同名文件编号
-            while os.path.isfile(f'{self.vidname}-{n}'):
+            while os.path.isfile(f'{self.vidname}-{n}.csv'):
                 n += 1
             # newline=''防止换行符转换错误
             with open(f'{self.vidname}-{n}.csv', 'w', newline='', encoding='utf_8_sig') as f:  # utf-8 BOM 否则excel无法识别
@@ -155,6 +175,7 @@ class BilibiliCommentSpider:
         allpagedict = self.request_json_dict()
         self.vidname = self.get_basic_info()
         self.users_level_ratio()
+        self.words_frequency()
         self.save_as_csv()
 
 
@@ -164,6 +185,5 @@ if __name__ == '__main__':
     pagenum = int(input('输入需要抓取的页数: '))
     mode = int(input('输入数字选择评论排序模式：\n1、按热度排序(默认)\n2、按时间排序'))
     spider = BilibiliCommentSpider(vid=vid, pagenum=pagenum,
-                                   mode=mode if mode == 2 else 3)   # vid为纯数字av号(int)或以BV开头的bv号(str)
+                                   mode=mode if mode == 2 else 3)  # vid为纯数字av号(int)或以BV开头的bv号(str)
     spider.run()
-
