@@ -112,7 +112,7 @@ class BilibiliCommentSpider:
     def save_as_csv(self):
         save = input('保存所有评论为csv格式输入y，否则n')
         if save == 'y':
-            verbose = input('选择内容详细程度（默认2，回车默认）:\n1、用户名+内容\n2、uid+用户名+性别+等级+时间+内容\n3、（暂未开发）')
+            verbose = input('选择内容详细程度（默认2，回车默认）:\n1、用户名+内容\n2、uid+用户名+性别+等级+时间+内容\n3、（暂未开发）\n')
             if verbose == '':
                 verbose = 2
             elif verbose.isnumeric():
@@ -122,7 +122,7 @@ class BilibiliCommentSpider:
             while os.path.isfile(f'{self.vidname}-{n}'):
                 n += 1
             # newline=''防止换行符转换错误
-            with open(f'{self.vidname}-{n}.csv', 'w', newline='', encoding='utf-8') as f:
+            with open(f'{self.vidname}-{n}.csv', 'w', newline='', encoding='utf_8_sig') as f:  # utf-8 BOM 否则excel无法识别
                 writer = csv.writer(f)
                 if verbose == 1:
                     writer.writerow(['用户名', '内容'])  # 表头
@@ -130,7 +130,7 @@ class BilibiliCommentSpider:
                         writer.writerow([comment['member']['uname'], comment['content']['message']])
                     print(f'已保存到{self.vidname}-{n}.csv')
                 elif verbose == 2:
-                    writer.writerow(['uid，用户名，性别，等级，发布时间，内容'])
+                    writer.writerow(['uid', '用户名', '性别', '等级', '发布时间', '内容'])
                     for comment in self.sortedcomment:
                         writer.writerow([comment['member']['mid'], comment['member']['uname'], comment['member']['sex'],
                                          comment['member']['level_info']['current_level'],
