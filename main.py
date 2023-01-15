@@ -122,14 +122,14 @@ class BilibiliCommentSpider:
                         else:
                             words_dict[word] = 1
 
-        rank = 11   # 切片左闭右开
+        rank = 10   # 切片左闭右开
         rank_in = input('分析完成，需要展示前几名的词频？(默认前10)\n')
         if rank_in.isnumeric():
-            rank = int(rank_in) + 1
+            rank = int(rank_in)
         words_freq_list = sorted(words_dict.items(), key=lambda x: x[1], reverse=True)[:rank]
         print(f'前{rank}高频词: ')
-        for word in words_freq_list:
-            print(f'{word[0]} - {word[1]}次')
+        for num, word in enumerate(words_freq_list):
+            print(f'{num+1}、{word[0]} - {word[1]}次')
         return words_freq_list
 
     def sortcomment(self):  # 将主次回复同等级整合
