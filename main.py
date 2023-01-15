@@ -92,10 +92,28 @@ class BilibiliCommentSpider:
             f'5级及以上占比{(sum(levellist[5:]) / sum(levellist)) * 100:.2f}%   6级及以上占比{(sum(levellist[6:]) / sum(levellist)) * 100:.2f}%'
             f'   6+级占比{(levellist[7] / sum(levellist)) * 100:.2f}%')
 
+    def remove_duplicate(self):
+        print('开始去除复制粘贴评论')
+        dup_dict = {}
+        del_num = 0
+        for num, comment in enumerate(self.sortedcomment):
+            if comment['content']['message'] not in dup_dict:
+                dup_dict[comment['content']['message']] = 1
+            else:
+                dup_dict[comment['content']['message']] += 1
+                if dup_dict[comment['content']['message']] > 2:
+                    del self.sortedcomment[num]
+                    del_num += 1
+        print(f'去除完成，共去除{del_num}条重复评论，剩余{len(self.sortedcomment)}条评论')
+        time.sleep(3)
+
     def words_frequency(self):
         start = input('是否进行高频词分析: 1、分析(默认) 2、不分析\n')
         if start == '2':
             return
+        duplicate_remove = input('是否去除复制粘贴的评论？可能会导致评论较少（整句重复两次以上） 1、去除(默认) 2、不去除\n')
+        if duplicate_remove != '2':
+            self.remove_duplicate()
         print('开始分析词频')
         time.sleep(3)
         words_dict = {}
@@ -123,7 +141,7 @@ class BilibiliCommentSpider:
                             words_dict[word] = 1
 
         rank = 10   # 切片左闭右开
-        rank_in = input('分析完成，需要展示前几名的词频？(默认前10)\n')
+        rank_in = input(f'分析完成，共{len(words_dict)}个关键词，需要展示前几名的高频词？(默认前10)\n')
         if rank_in.isnumeric():
             rank = int(rank_in)
         words_freq_list = sorted(words_dict.items(), key=lambda x: x[1], reverse=True)[:rank]
