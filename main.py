@@ -58,8 +58,7 @@ class BilibiliCommentSpider:
             time.sleep(random.uniform(1, 3))  # 随机间隔时间范围
         t2 = time.time()
         print(f'爬取结束，用时{t2 - t1:.2f}秒    {time.asctime()}')
-        print('开始整合评论')
-        self.sortcomment()
+        self.sortcomment()   # 整合评论
         return self.allpagedict
 
     def getpages(self, n) -> dict:  # 从0开始   # 一页20个主评论
@@ -71,6 +70,11 @@ class BilibiliCommentSpider:
     # def getpagereplynums(self, page: dict):   # 统计传入页内容字典中，所有
 
     def users_level_ratio(self):
+        start = input('是否进行用户等级比例分析？ 1、分析（默认） 2、不分析')
+        if start == '2':
+            return
+        print('开始分析用户等级比例')
+        time.sleep(3)
         levellist = [0] * 8  # 对应0-6闪电 八个等级
         for comment in self.sortedcomment:
             if comment['member']['is_senior_member'] == 1:
@@ -89,6 +93,11 @@ class BilibiliCommentSpider:
             f'   6+级占比{(levellist[7] / sum(levellist)) * 100:.2f}%')
 
     def words_frequency(self):
+        start = input('是否进行高频词分析: 1、分析(默认) 2、不分析\n')
+        if start == '2':
+            return
+        print('开始分析词频')
+        time.sleep(3)
         words_dict = {}
         stop_list = ['回复', '是', '个', '们', '怎么', '没有', '什么', '这']
         jump_flag = False  # 跳过b站表情标签
@@ -113,12 +122,18 @@ class BilibiliCommentSpider:
                         else:
                             words_dict[word] = 1
 
-        words_freq_list = sorted(words_dict.items(), key=lambda x: x[1], reverse=True)[:11]  # 只取前10个
-        print('前十高频词: ')
+        rank = 11   # 切片左闭右开
+        rank_in = input('分析完成，需要展示前几名的词频？(默认前10)\n')
+        if rank_in.isnumeric():
+            rank = int(rank_in) + 1
+        words_freq_list = sorted(words_dict.items(), key=lambda x: x[1], reverse=True)[:rank]
+        print(f'前{rank}高频词: ')
         for word in words_freq_list:
             print(f'{word[0]} - {word[1]}次')
+        return words_freq_list
 
     def sortcomment(self):  # 将主次回复同等级整合
+        print('开始整合评论')
         for num in range(pagenum):
             page = self.getpages(num)
             if page.get('data').get('replies') is not None:  # 防止无回复时产生keyerror
