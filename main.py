@@ -20,7 +20,7 @@ class BilibiliCommentSpider:
         # self.delay = delay   # 爬取延迟随机范围
         self.mode = mode  # mode=3按热门，mode=2按时间
         self.pagenum = pagenum  # 爬取总页数
-        self.url = 'https://api.bilibili.com/x/v2/reply/main?'
+        self.url = 'https://api.bilibili.com/x/v2/reply/wbi/main?'
         self.headers = {'UserAgent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                      'Chrome/104.0.5112.102 Safari/537.36 Edg/104.0.1293.63'}
         self.next = 0  # 评论页数第一页是0，后续在data: cursor: next中
