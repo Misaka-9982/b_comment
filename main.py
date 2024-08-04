@@ -4,6 +4,7 @@ import requests
 import json
 import time
 import jieba
+import jieba.posseg
 import re
 import csv
 
@@ -25,12 +26,14 @@ class BilibiliCommentSpider:
         self.next = 0  # 评论页数第一页是0，后续在data: cursor: next中
         self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode={self.mode}&plat=1'
         self.allpagedict = []  # 所有页的集合
-        self.sortedcomment = []  # 主回复和子回复整理后分开存储
+        self.sortedcomment: list[dict] = []  # 主回复和子回复整理后分开存储
         self.vidname = None
+        self.proxies = {'http': 'http://127.0.0.1:7890',
+                      "https": "http://127.0.0.1:7890"}
 
     def get_basic_info(self):  # 获取标题等
         url = f'https://www.bilibili.com/video/av{self.oid}'
-        res = requests.get(url, headers=self.headers)
+        res = requests.get(url, headers=self.headers, proxies=self.proxies)
         title = re.findall('<title data-vue-meta="true">(.*?)</title>', res.text)
         if len(title) == 0:
             title = re.findall('<html>.*?<title>(.*?)</title>', res.text)
@@ -46,14 +49,18 @@ class BilibiliCommentSpider:
             t2 = time.time()
             print(f'正在爬取{i + 1}/{self.pagenum}页，已用时{t2 - t1:.2f}秒')
             try:
-                res = requests.get(self.url, params=self.querystrparams, headers=self.headers)
-            except (requests.exceptions.SSLError, requests.exceptions.ProxyError):
+                res = requests.get(self.url, params=self.querystrparams, headers=self.headers, proxies=self.proxies)
+            except (requests.exceptions.SSLError, requests.exceptions.ProxyError) as e:
+                print(repr(e))
                 exit('SSL/代理错误，请关闭代理或检查网络设置')
             except Exception as e:
                 exit(f'未知错误！\n{repr(e)}')
             page_dict = json.loads(res.text)
             self.allpagedict.append(page_dict)
-            self.next = page_dict['data']['cursor']['next']
+            try:
+                self.next = page_dict['data']['cursor']['next']
+            except KeyError:
+                exit('未爬取到有效内容')
             self.querystrparams = f'jsonp=jsonp&next={self.next}&type=1&oid={self.oid}&mode={self.mode}&plat=1'
             time.sleep(random.uniform(1, 3))  # 随机间隔时间范围
         t2 = time.time()
@@ -102,7 +109,8 @@ class BilibiliCommentSpider:
             else:
                 dup_dict[comment['content']['message']] += 1
                 if dup_dict[comment['content']['message']] > 2:
-                    del self.sortedcomment[num]
+                    # del self.sortedcomment[num]   这里不能使用索引num来删除，遍历中增删元素会导致索引变化错位，导致隐蔽的结果异常
+                    self.sortedcomment.remove(comment)
                     del_num += 1
         print(f'去除完成，共去除{del_num}条重复评论，剩余{len(self.sortedcomment)}条评论')
         time.sleep(3)
@@ -118,10 +126,13 @@ class BilibiliCommentSpider:
         time.sleep(3)
         words_dict = {}
         stop_list = ['回复', '是', '个', '们', '怎么', '没有', '什么', '这']
+        jump_sort = ['p', 'u', 'q', 'c', 'r']  # 按词性排除
         jump_flag = False  # 跳过b站表情标签
         print('正在计算高频词')
         for comment in self.sortedcomment:
-            for word in jieba.cut(comment['content']['message'], HMM=True):  # cut返回迭代器  HMM-词库外的新词分割
+            for word, sort in jieba.posseg.cut(comment['content']['message'], HMM=True):  # cut返回迭代器  HMM-词库外的新词分割
+                if sort in jump_sort:
+                    continue
                 if word == '[' or jump_flag:  # 过滤b站表情
                     jump_flag = True
                     if word == ']':
@@ -149,6 +160,13 @@ class BilibiliCommentSpider:
         for num, word in enumerate(words_freq_list):
             print(f'{num+1}、{word[0]} - {word[1]}次')
         return words_freq_list
+
+    def resortcomment(self):
+        print('是否按点赞数从高到低排序评论，消除阿瓦隆权重影响？ 1、重排序')
+        start = input()
+        # 待完成
+        self.sortedcomment.sort(key=lambda x: x.get('like'), reverse=True)
+        return self.sortedcomment
 
     def sortcomment(self):  # 将主次回复同等级整合
         print('开始整合评论')
